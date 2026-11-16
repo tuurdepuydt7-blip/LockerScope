@@ -11,22 +11,18 @@ module.exports = async function handler(req, res) {
   const key = process.env.FORTNITE_API_KEY;
 
   if (!key) {
-    return res.status(500).json({ error: "Server API key is not configured." });
+    return res.status(500).json({
+      error: "FORTNITE_API_KEY is missing in Vercel Environment Variables."
+    });
   }
 
   const username = String(req.query.username || "").trim();
   const id = String(req.query.id || "").trim();
 
   if ((!username && !id) || (username && id)) {
-    return res.status(400).json({ error: "Provide either username or id." });
-  }
-
-  if (username && (username.length > 64 || /[\u0000-\u001f]/.test(username))) {
-    return res.status(400).json({ error: "Invalid username." });
-  }
-
-  if (id && !/^[a-zA-Z0-9_-]{5,128}$/.test(id)) {
-    return res.status(400).json({ error: "Invalid account ID." });
+    return res.status(400).json({
+      error: "Provide a username or an account ID."
+    });
   }
 
   const path = username
@@ -34,27 +30,43 @@ module.exports = async function handler(req, res) {
     : "/api/v2/stats/" + encodeURIComponent(id);
 
   try {
-    const upstream = await fetch(BASE + path, {
+    const response = await fetch(BASE + path, {
+      method: "GET",
       headers: {
         "x-api-key": key,
         "Accept": "application/json"
       },
-      signal: AbortSignal.timeout(10000)
+      signal: AbortSignal.timeout(15000)
     });
 
-    const body = await upstream.json().catch(() => null);
+    const result = await response.json().catch(() => null);
 
-    if (!upstream.ok) {
-      return res.status(upstream.status).json({
-        error: upstream.status === 404
-          ? "Player not found."
-          : "Fortnite provider returned an error."
+    if (!response.ok) {
+      console.error("Provider error:", response.status, result);
+
+      return res.status(response.status).json({
+        error: username
+          ? "Username lookup failed."
+          : "Could not retrieve player statistics.",
+        providerStatus: response.status,
+        providerResponse: result
       });
     }
 
-    return res.status(200).json(body);
+    if (!result) {
+      return res.status(502).json({
+        error: "The Fortnite API returned invalid JSON."
+      });
+    }
+
+    return res.status(200).json(result);
+
   } catch (error) {
-    console.error("Fortnite API error:", error.message);
-    return res.status(502).json({ error: "Could not contact Fortnite API." });
+    console.error("Backend error:", error);
+
+    return res.status(502).json({
+      error: "Could not connect to Fortnite API.",
+      details: error.message
+    });
   }
 };

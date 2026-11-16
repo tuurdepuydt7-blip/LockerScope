@@ -1,77 +1,47 @@
 
-async function searchPlayer(event) {
-  event.preventDefault();
+function mapStats(response) {
+  console.log("FULL FORTNITE STATS RESPONSE:", response);
 
-  const username = $("username").value.trim();
+  const data = response?.data ?? response;
 
-  if (!username) {
-    message("Enter a Fortnite username.", "#ff8585");
-    return;
-  }
+  // Handle common response structures
+  const stats =
+    data?.stats?.all ??
+    data?.stats?.lifetime ??
+    data?.stats ??
+    data?.all ??
+    data?.lifetime ??
+    data;
 
-  $("searchButton").disabled = true;
-  $("searchButton").textContent = "SEARCHING...";
-  $("dashboard").hidden = true;
+  console.log("EXTRACTED STATS:", stats);
 
-  try {
-    message("Looking up Epic account...");
-
-    // STEP 1: Find Epic account by username
-    const response = await request(
-      "/api/player?username=" + encodeURIComponent(username)
-    );
-
-    const account = unwrap(response);
-
-    // Support different account response structures
-    const accountData = account?.account || account?.user || account;
-
-    const accountId =
-      accountData?.id ||
-      accountData?.accountId ||
-      accountData?.account_id ||
-      accountData?.epicAccountId;
-
-    const displayName =
-      accountData?.displayName ||
-      accountData?.display_name ||
-      accountData?.name ||
-      username;
-
-    if (!accountId) {
-      console.error("Account response:", response);
-      throw new Error(
-        "Account found response did not contain an Epic Account ID."
-      );
+  const find = (...keys) => {
+    for (const key of keys) {
+      if (stats?.[key] !== undefined && stats[key] !== null) {
+        return stats[key];
+      }
     }
+    return null;
+  };
 
-    // STEP 2: Save selected player
-    currentPlayer = {
-      id: accountId,
-      name: displayName
-    };
+  const wins = find("br_placetop1", "placetop1", "wins", "wins_total");
+  const kills = find("br_kills", "kills", "eliminations", "br_kills_total");
+  const deaths = find("br_deaths", "deaths");
+  const matches = find("br_matchesplayed", "matches", "matchesPlayed");
 
-    previousStats = null;
+  const kd = find("br_kd", "kd", "kdr");
+  const winRate = find("br_winrate", "winRate", "winrate");
 
-    $("playerName").textContent = displayName;
-    $("avatar").textContent = displayName.charAt(0).toUpperCase();
-    $("accountId").textContent = "Account ID: " + accountId;
-    $("dashboard").hidden = false;
-
-    message("Account found! Loading statistics...", "#55e6a5");
-
-    // STEP 3: Load stats
-    await refreshStats();
-
-    clearInterval(refreshTimer);
-    refreshTimer = setInterval(refreshStats, 60000);
-
-  } catch (error) {
-    console.error(error);
-    message(error.message, "#ff8585");
-
-  } finally {
-    $("searchButton").disabled = false;
-    $("searchButton").textContent = "SEARCH PLAYER →";
-  }
+  return {
+    wins: format(wins),
+    kills: format(kills),
+    deaths: format(deaths),
+    matches: format(matches),
+    kd: kd == null ? "—" : Number(kd).toFixed(2),
+    winrate: winRate == null
+      ? (wins != null && matches > 0
+          ? (wins / matches * 100).toFixed(2) + "%"
+          : "—")
+      : Number(winRate).toFixed(2) + "%"
+  };
 }

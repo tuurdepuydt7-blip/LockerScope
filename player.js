@@ -1,22 +1,19 @@
+
 const BASE = "https://prod.api-fortnite.com";
 
 module.exports = async function handler(req, res) {
-  res.setHeader("Cache-Control", "no-store");
-  if (req.method !== "GET") {
-    return res.status(405).json({ error: "Method not allowed" });
-  }
-
   const key = process.env.FORTNITE_API_KEY;
+
   if (!key) {
-    return res.status(500).json({
-      error: "Missing FORTNITE_API_KEY environment variable in Vercel"
-    });
+    return res.status(500).json({ error: "Missing API key" });
   }
 
-  const username = typeof req.query.username === "string" ? req.query.username.trim() : "";
-  const id = typeof req.query.id === "string" ? req.query.id.trim() : "";
+  const { username, id } = req.query;
+
   if ((!username && !id) || (username && id)) {
-    return res.status(400).json({ error: "Provide exactly one parameter: username OR id" });
+    return res.status(400).json({
+      error: "Provide username OR id"
+    });
   }
 
   const path = username
@@ -25,29 +22,37 @@ module.exports = async function handler(req, res) {
 
   try {
     const response = await fetch(BASE + path, {
-      method: "GET",
-      headers: { "x-api-key": key, "Accept": "application/json" },
-      signal: AbortSignal.timeout(9000)
+      headers: {
+        "x-api-key": key,
+        "Accept": "application/json"
+      }
     });
+
     const raw = await response.text();
+
     let data;
-    try { data = JSON.parse(raw); }
-    catch {
+    try {
+      data = JSON.parse(raw);
+    } catch {
       return res.status(502).json({
-        error: "Fortnite provider returned a non-JSON response",
-        providerStatus: response.status,
-        responsePreview: raw.slice(0, 300)
+        error: "Invalid JSON from Fortnite API",
+        response: raw.slice(0, 500)
       });
     }
+
     if (!response.ok) {
       return res.status(response.status).json({
-        error: "Fortnite provider request failed",
+        error: "Fortnite API error",
         providerStatus: response.status,
         details: data
       });
     }
+
     return res.status(200).json(data);
+
   } catch (error) {
-    return res.status(502).json({ error: error.name === "TimeoutError" ? "Fortnite provider timed out" : error.message });
+    return res.status(502).json({
+      error: error.message
+    });
   }
 };

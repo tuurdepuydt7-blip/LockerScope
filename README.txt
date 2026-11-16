@@ -1,25 +1,26 @@
-LOCKERSCOPE - FIXED PROJECT LAYOUT
+LOCKERSCOPE - VERCEL DEPLOYMENT
 
-Deploy this folder's CONTENTS as the Vercel project root.
+1. Upload the CONTENTS of this folder to the ROOT of your GitHub repository.
+   The repository root must contain:
+     public/index.html
+     public/style.css
+     public/app.js
+     api/player.js
+     package.json
+     vercel.json
 
-Required Vercel environment variable:
-FORTNITE_API_KEY = your provider API key
+2. In Vercel, set the project Root Directory to ./ (repository root).
 
-Do not put the key in app.js, index.html, GitHub, or share it in chat.
-After adding/changing the environment variable, redeploy on Vercel.
+3. In Vercel -> Settings -> Environment Variables, add:
+     Name: FORTNITE_API_KEY
+     Value: your API provider key
+   Do not put this key in public/app.js or GitHub.
 
-Expected layout:
-public/index.html
-public/style.css
-public/app.js
-api/player.js
-package.json
-vercel.json
+4. Redeploy on Vercel.
 
-Test after deployment:
-1. Open https://YOUR-VERCEL-DOMAIN.vercel.app/
-2. Open https://YOUR-VERCEL-DOMAIN.vercel.app/api/player?username=PLAYERNAME
-   (This endpoint should return account info or a clear API error.)
-3. Search from the website.
+5. Test these URLs on your Vercel domain:
+     https://YOUR-DOMAIN.vercel.app/api/player?username=PLAYERNAME
+   This should return account lookup JSON (or a useful error JSON).
 
-If you use GitHub Pages for the frontend instead of Vercel, app.js must use the full Vercel API URL rather than /api/player. The supplied version is configured for frontend and backend both hosted on Vercel.
+NOTE: This project uses the unofficial prod.api-fortnite.com API provider.
+The exact stats response fields depend on that provider's response format.
